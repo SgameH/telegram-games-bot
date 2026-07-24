@@ -59,14 +59,14 @@ async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
 
 async def ask_to_subscribe(update: Update):
     text = (
-        "عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية!\n\n"
-        "يرجى الاشتراك في القناة أولاً لتتمكن من اللعب واستخدام كافة الميزات:\n"
+        "⚠️ عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية!\n\n"
+        "📢 يرجى الاشتراك في القناة أولاً لتتمكن من اللعب واستخدام كافة الميزات:\n"
         f"{CHANNEL_URL}\n\n"
-        "بعد الانضمام، اضغط على زر 'تحقق من الاشتراك'."
+        "✅ بعد الانضمام، اضغط على زر 'تحقق من الاشتراك'."
     )
     keyboard = [
-        [InlineKeyboardButton("اشترك في القناة", url=CHANNEL_URL)],
-        [InlineKeyboardButton("تحقق من الاشتراك", callback_data="check_sub")]
+        [InlineKeyboardButton("📢 اشترك في القناة", url=CHANNEL_URL)],
+        [InlineKeyboardButton("🔄 تحقق من الاشتراك", callback_data="check_sub")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -80,14 +80,16 @@ async def ask_to_subscribe(update: Update):
 
 async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
+    bot_username = context.bot.username
+    
     if user and not await check_subscription(user.id, context):
         results = [
             InlineQueryResultArticle(
                 id=str(uuid.uuid4()),
-                title="يجب الاشتراك بالقناة أولاً للعب!",
+                title="⚠️ يجب الاشتراك بالقناة أولاً للعب!",
                 description="اضغط هنا للاشتراك في قناة البوت الرسمية.",
                 input_message_content=InputTextMessageContent(
-                    message_text=f"عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية:\n{CHANNEL_URL}"
+                    message_text=f"⚠️ عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية:\n{CHANNEL_URL}"
                 ),
             )
         ]
@@ -97,57 +99,57 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     results = [
         InlineQueryResultArticle(
             id="ttt_game",
-            title="لعبة اكس أو (Tic Tac Toe)",
+            title="❌ لعبة اكس أو (Tic Tac Toe) ⭕",
             description="تحدى صديقك في لعبة اكس أو الشهيرة داخل المحادثة!",
             input_message_content=InputTextMessageContent(
-                message_text="تم إنشاء تحدي جديد في لعبة اكس أو!\nاضغط على الزر أدناه للدخول والبدء باللعب معاً:"
+                message_text="🎮 تم إنشاء تحدي جديد في لعبة اكس أو (Tic Tac Toe)!\n👇 اضغط على الزر أدناه للدخول والبدء باللعب معاً:"
             ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("ابدأ التحدي الآن", callback_data="menu_ttt")]
+                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=game_ttt")]
             ])
         ),
         InlineQueryResultArticle(
             id="rps_game",
-            title="حجر - ورقة - مقص",
+            title="✊ حجر - ✋ ورقة - ✌️ مقص",
             description="تحدى صديقك في لعبة المواجهة السريعة.",
             input_message_content=InputTextMessageContent(
-                message_text="تحدي حجر - ورقة - مقص:\nاضغط على الزر أدناه للدخول واختيار حركتك:"
+                message_text="🎮 تحدي حجر - ورقة - مقص:\n👇 اضغط على الزر أدناه للدخول واختيار حركتك:"
             ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("ابدأ التحدي الآن", callback_data="menu_rps")]
+                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=rps_start")]
             ])
         ),
         InlineQueryResultArticle(
             id="treasure_game",
-            title="جزيرة الكنوز والأموال",
+            title="💰 جزيرة الكنوز والأموال 🏝️",
             description="تنافس مع صديقك في التنقيب عن الكنوز.",
             input_message_content=InputTextMessageContent(
-                message_text="تحدي جزيرة الكنوز:\nاضغط على الزر أدناه لاختبار حظك والتنقيب:"
+                message_text="🎮 تحدي جزيرة الكنوز والأموال:\n👇 اضغط على الزر أدناه لاختبار حظك والتنقيب:"
             ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("ابدأ التحدي الآن", callback_data="menu_treasure")]
+                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=gold_start")]
             ])
         ),
         InlineQueryResultArticle(
             id="traps_game",
-            title="الصناديق المفخخة",
+            title="💣 الصناديق المفخخة 📦",
             description="تجنب الفخاخ واكتشف الصناديق الآمنة.",
             input_message_content=InputTextMessageContent(
-                message_text="تحدي الصناديق المفخخة:\nاضغط على الزر أدناه للبدء بحذر:"
+                message_text="🎮 تحدي الصناديق المفخخة:\n👇 اضغط على الزر أدناه للبدء بحذر:"
             ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("ابدأ التحدي الآن", callback_data="menu_traps")]
+                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=trap_start")]
             ])
         ),
         InlineQueryResultArticle(
             id="battleship_game",
-            title="السفن الحربية",
+            title="🚢 السفن الحربية 🎯",
             description="معركة بحرية استراتيجية لتدمير أسطول الخصم.",
             input_message_content=InputTextMessageContent(
-                message_text="تحدي السفن الحربية:\nاضغط على الزر أدناه لبدء المعركة الاستراتيجية:"
+                message_text="🎮 تحدي السفن الحربية الاستراتيجية:\n👇 اضغط على الزر أدناه لبدء المعركة:"
             ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("ابدأ التحدي الآن", callback_data="menu_battleship")]
+                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=bs_start")]
             ])
         )
     ]
@@ -166,7 +168,7 @@ async def main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if args and len(args) > 0:
         payload = args[0]
-        if payload.startswith("game_"):
+        if payload.startswith("game_") or payload == "game_ttt":
             await tictactoe_start(update, context)
             return
         elif payload.startswith("rps_"):
@@ -191,25 +193,25 @@ async def games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_name = user.first_name if user else "صديقي"
-    menu_text = f"قائمة الألعاب المتاحة يا {user_name}:\nاختر اللعبة لإنشاء رابط التحدي ومشاركته مع صديقك:"
+    menu_text = f"🌟 أهلاً بك يا **{user_name}** في بوت الألعاب الجماعية!\n\n🎮 اختر اللعبة التي ترغب بها لإنشاء رابط التحدي ومشاركته مع أصدقائك:"
 
     keyboard = [
-        [InlineKeyboardButton("لعبة اكس أو", callback_data="menu_ttt")],
-        [InlineKeyboardButton("حجر - ورقة - مقص", callback_data="menu_rps")],
-        [InlineKeyboardButton("جزيرة الكنوز والأموال", callback_data="menu_treasure")],
-        [InlineKeyboardButton("الصناديق المفخخة", callback_data="menu_traps")],
-        [InlineKeyboardButton("السفن الحربية", callback_data="menu_battleship")],
-        [InlineKeyboardButton("تعليمات وشرح الألعاب", callback_data="show_help")]
+        [InlineKeyboardButton("❌ لعبة اكس أو (Tic Tac Toe) ⭕", callback_data="menu_ttt")],
+        [InlineKeyboardButton("✊ حجر - ✋ ورقة - ✌️ مقص", callback_data="menu_rps")],
+        [InlineKeyboardButton("💰 جزيرة الكنوز والأموال 🏝️", callback_data="menu_treasure")],
+        [InlineKeyboardButton("💣 الصناديق المفخخة 📦", callback_data="menu_traps")],
+        [InlineKeyboardButton("🚢 السفن الحربية 🎯", callback_data="menu_battleship")],
+        [InlineKeyboardButton("📚 تعليمات وشرح الألعاب", callback_data="show_help")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if update.callback_query and update.callback_query.message:
         try:
-            await update.callback_query.message.edit_text(menu_text, reply_markup=reply_markup)
+            await update.callback_query.message.edit_text(menu_text, reply_markup=reply_markup, parse_mode="Markdown")
         except Exception:
             pass
     else:
-        await update.message.reply_text(menu_text, reply_markup=reply_markup)
+        await update.message.reply_text(menu_text, reply_markup=reply_markup, parse_mode="Markdown")
 
 async def show_help_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -218,28 +220,27 @@ async def show_help_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     help_text = (
-        "دليل وتعليمات ألعاب البوت الجماعية:\n\n"
-        "1. لعبة اكس أو (Tic Tac Toe):\n"
-        "• الفكرة: لعبة الكلاسيكية الشهيرة لترتيب 3 رموز متتالية.\n"
-        "• طريقة اللعب: اختر اللعبة وتبادل الأدوار بالضغط على المربعات.\n\n"
-        "2. حجر - ورقة - مقص:\n"
+        "📚 **دليل وتعليمات ألعاب البوت الجماعية:**\n\n"
+        "1️⃣ **لعبة اكس أو (Tic Tac Toe):**\n"
+        "• الفكرة: اللعبة الكلاسيكية الشهيرة لترتيب 3 رموز متتالية (X أو O).\n\n"
+        "2️⃣ **حجر - ورقة - مقص:**\n"
         "• الفكرة: المواجهة السريعة المعروفة لتحديد الفائز.\n\n"
-        "3. جزيرة الكنوز والأموال:\n"
-        "• الفكرة: مغامرة استكشاف للبحث عن الكنوز الثمينة.\n\n"
-        "4. الصناديق المفخخة:\n"
+        "3️⃣ **جزيرة الكنوز والأموال:**\n"
+        "• الفكرة: مغامرة استكشاف للبحث عن الصناديق التي تحمل الكنوز الثمينة.\n\n"
+        "4️⃣ **الصناديق المفخخة:**\n"
         "• الفكرة: اختبار حظ وتفكير لتجنب الصناديق المفخخة.\n\n"
-        "5. السفن الحربية:\n"
+        "5️⃣ **السفن الحربية:**\n"
         "• الفكرة: معركة بحرية استراتيجية لتدمير أسطول الخصم."
     )
 
     keyboard = [
-        [InlineKeyboardButton("رجوع لقائمة الألعاب", callback_data="show_games_menu")]
+        [InlineKeyboardButton("🔙 رجوع لقائمة الألعاب", callback_data="show_games_menu")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if update.callback_query and update.callback_query.message:
         try:
-            await update.callback_query.message.edit_text(help_text, reply_markup=reply_markup)
+            await update.callback_query.message.edit_text(help_text, reply_markup=reply_markup, parse_mode="Markdown")
         except Exception:
             pass
 
@@ -252,7 +253,6 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
     user = query.from_user
     message = query.message
     
-    # الحل الآمن لاستخراج معرف المحادثة بدقة تامة
     chat_id = None
     if message and hasattr(message, "chat_id") and message.chat_id:
         chat_id = message.chat_id
@@ -262,11 +262,11 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
     if data == "check_sub":
         is_subscribed = await check_subscription(user.id, context)
         if is_subscribed:
-            await query.answer("شكراً لاشتراكك! تم فتح البوت بنجاح.", show_alert=True)
+            await query.answer("🎉 شكراً لاشتراكك! تم فتح البوت بنجاح.", show_alert=True)
             await games_command(update, context)
         else:
             await query.answer(
-                "عذراً، لم تقم بالاشتراك في القناة بعد!\nيرجى الضغط على زر 'اشترك في القناة' أولاً.",
+                "⚠️ عذراً، لم تقم بالاشتراك في القناة بعد!\nيرجى الضغط على زر 'اشترك في القناة' أولاً.",
                 show_alert=True
             )
         return
@@ -329,7 +329,7 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
     elif data.startswith("trap_"):
         data_parts = data.split("_")
         if len(data_parts) > 1 and data_parts[1] == "start":
-            await traps_start(fake_update, context)
+            await traps_start(fake_updates, context) if 'fake_updates' in locals() else await traps_start(fake_update, context)
         else:
             await traps_button_handler(update, context)
     elif data.startswith("bs_"):
@@ -356,7 +356,7 @@ def main():
     app.add_handler(InlineQueryHandler(inline_query_handler))
     app.add_handler(CallbackQueryHandler(universal_callback_handler))
 
-    print("البوت الشامل يعمل الآن بكفاءة تامة...")
+    print("🤖 البوت الشامل يعمل الآن بكفاءة تامة...")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
