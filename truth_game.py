@@ -42,8 +42,9 @@ def generate_unique_question(category: str, chat_id: int) -> str:
         if not _gemini_client:
             return "⚠️ تنبيه: لم يتم تهيئة مفتاح الـ API الخاص بـ Gemini بشكل صحيح."
 
+        # تم تحديث اسم النموذج هنا إلى gemini-2.5-flash المتوافق مع المكتبة الجديدة
         response = _gemini_client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
         )
         question = response.text.strip().replace('"', "")
