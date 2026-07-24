@@ -10,12 +10,13 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# استيراد دوال الألعاب الخمسة (بما فيها السفن الحربية باسمها الصحيح battleship)
+# استيراد دوال الألعاب (XO، حجر ورقة مقص، الصناديق، الكنز، السفن الحربية، والصراحة بالذكاء الاصطناعي)
 from rps import rps_start, rps_button_handler, active_rps_games
 from tictactoe import tictactoe_start, tictactoe_button_handler, active_games, create_board
 from traps import traps_start, traps_button_handler, active_trap_games
 from treasure import treasure_start, treasure_button_handler, active_gold_games
-from battleship import battleship_start, battleship_button_handler, active_battleship_games  # 🚢 السفن الحربية
+from battleship import battleship_start, battleship_button_handler, active_battleship_games
+from truth_game import truth_start, truth_button_handler, truth_active_games, setup_truth_handlers
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -66,7 +67,7 @@ async def show_subscription_required(update: Update):
             pass
 
 
-# ================= دالة البداية الرئيسية (تعليمات وبدون أزرار داخلية) =================
+# ================= دالة البداية الرئيسية =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     
@@ -88,20 +89,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await treasure_start(update, context)
         elif payload.startswith("bs_"):
             return await battleship_start(update, context)
+        elif payload.startswith("truth_"):
+            return await truth_start(update, context)
 
-    # رسالة الترحيب الإرشادية تشرح الألعاب وطريقة اللعب بدون أزرار داخلية
+    # رسالة الترحيب الإرشادية
     instructions = (
         f"👋 أهلاً بك يا **{user.first_name}** في بوت الألعاب التنافسية الاحترافي!\n\n"
-        f"🎮 **الألعاب الـ 5 المتاحة في البوت:**\n"
+        f"🎮 **الألعاب الـ 6 المتاحة في البوت:**\n"
         f"1️⃣ لعبة XO (إكس أو)\n"
         f"2️⃣ لعبة حجر ورقة مقص\n"
         f"3️⃣ لعبة الصناديق المفخخة\n"
         f"4️⃣ مغامرة جزيرة الكنز والأموال\n"
-        f"5️⃣ لعبة السفن الحربية 🚢\n\n"
+        f"5️⃣ لعبة السفن الحربية 🚢\n"
+        f"6️⃣ لعبة الصراحة والجرأة (ذكاء اصطناعي) 🎯\n\n"
         f"📖 **طريقة اللعب مع أصدقائك (في أي محادثة أو مجموعة):**\n"
         f"• افتح أي محادثة خاصة أو مجموعة.\n"
         f"• اكتب يوزر البوت هكذا: `@{BOT_USERNAME}`\n"
-        f"• ستظهر لك قائمة الألعاب الخمسة، اختر اللعبة التي تعجبك.\n"
+        f"• ستظهر لك قائمة الألعاب، اختر اللعبة التي تعجبك.\n"
         f"• سيتم إرسال اللعبة في الشات، وكل ما على صديقك إلا الضغط على زر **(انضمام)** ليبدأ التحدي مباشرة بينكم!"
     )
 
@@ -109,7 +113,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(instructions, parse_mode="Markdown")
 
 
-# ================= دالة البحث المباشر (إظهار الألعاب الـ 5 بالإنلاين) =================
+# ================= دالة البحث المباشر (إظهار الألعاب الـ 6 بالإنلاين) =================
 async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.inline_query
     user = query.from_user
@@ -204,7 +208,7 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     }
 
     # 5. إعداد لعبة السفن الحربية (Battleship)
-    from battleship import create_empty_grid, GRID_SIZE
+    from battleship import create_empty_grid
     bs_id = f"bs_inline_{user.id}_{query.id[:5]}"
     active_battleship_games[bs_id] = {
         "player_1": user.id,
@@ -216,6 +220,16 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         "shared_grid": create_empty_grid(),
         "turn": None,
         "status": "setup_1"
+    }
+
+    # 6. إعداد لعبة الصراحة والجرأة (Truth Game)
+    truth_id = f"truth_inline_{user.id}_{query.id[:5]}"
+    truth_active_games[truth_id] = {
+        "host_id": user.id,
+        "host_name": user.first_name,
+        "player_2_id": None,
+        "player_2_name": "بانتظار لاعب...",
+        "current_category": "truth"
     }
 
     results = [
@@ -274,6 +288,17 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             ),
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⚓ انضم والعب كـ منافس", callback_data=f"bs_join_{bs_id}")]])
         ),
+        InlineQueryResultArticle(
+            id=truth_id,
+            title="🎯 لعبة الصراحة والجرأة",
+            description="انقر لإرسال لعبة الصراحة والأسئلة المشوقة وابدأ التحدي",
+            thumbnail_url="https://i.top4top.io/p_3857rqk8k0.png",
+            input_message_content=InputTextMessageContent(
+                message_text=f"🎯 **تحدي جديد في لعبة الصراحة والجرأة**\n\n👤 أنشأ التحدي: **{user.first_name}**\n⏳ في انتظار انضمام المنافس لبدء الأسئلة...",
+                parse_mode="Markdown"
+            ),
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🎮 انضم للعبة الصراحة والجرأة", callback_data=f"truth_join_{truth_id}")]])
+        ),
     ]
     await update.inline_query.answer(results, cache_time=1)
 
@@ -292,7 +317,7 @@ async def button_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🎉 أهلاً بك يا **{user.first_name}** مرة أخرى!\n\n"
                 f"📖 **طريقة اللعب مع أصدقائك:**\n"
                 f"• افتح أي محادثة أو مجموعة واكتب يوزر البوت: `@{BOT_USERNAME}`\n"
-                f"• اختر إحدى الألعاب الخمسة من القائمة.\n"
+                f"• اختر إحدى الألعاب الـ 6 من القائمة.\n"
                 f"• اجعل صديقك يضغط على زر الانضمام المرفق مع الرسالة لتبدأ المنافسة!"
             )
             try:
@@ -317,18 +342,32 @@ async def button_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await treasure_button_handler(update, context)
     elif data.startswith("bs_"):
         return await battleship_button_handler(update, context)
+    elif data.startswith("truth_"):
+        return await truth_button_handler(update, context)
 
 
 def main():
     TOKEN = os.getenv("TOKEN")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+    if not TOKEN:
+        logger.error("خطأ: لم يتم تعيين متغير البيئة TOKEN الخاص بالبوت!")
+        return
 
     application = ApplicationBuilder().token(TOKEN).build()
+
+    # تهيئة لعبة الصراحة والجرأة بالذكاء الاصطناعي إذا وُجد المفتاح
+    if GEMINI_API_KEY:
+        setup_truth_handlers(application, GEMINI_API_KEY)
+        logger.info("تم تفعيل لعبة الصراحة والجرأة باستخدام Gemini AI بنجاح.")
+    else:
+        logger.warning("تنبيه: لم يتم تعيين GEMINI_API_KEY، لذا لن تعمل لعبة الصراحة والجرأة.")
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(InlineQueryHandler(inline_query_handler))
     application.add_handler(CallbackQueryHandler(button_router))
 
-    logger.info("Bot is running with all 5 games (XO, RPS, Traps, Treasure, Battleship)...")
+    logger.info("Bot is running with all 6 games successfully...")
     application.run_polling()
 
 
