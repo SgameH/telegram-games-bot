@@ -85,7 +85,7 @@ async def truth_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 2. معالجة الأزرار (الانضمام واختيار الأقسام)
+# 2. معالجة الأزرار (الانضمام واختيار الأقسام) بشكل آمن
 async def truth_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -109,7 +109,6 @@ async def truth_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         game["player_2_id"] = user.id
         game["player_2_name"] = user.first_name
 
-        # بعد الانضمام، تظهر أزرار اختيار الأقسام للجميع أو للاعب المنضم
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("🟢 صراحة", callback_data=f"truth_cat_{game_id}_truth"),
@@ -145,7 +144,9 @@ async def truth_button_handler(update: Update, context: ContextTypes.DEFAULT_TYP
             return
 
         game = truth_active_games[game_id]
-        chat_id = query.message.chat_id
+        
+        # استخراج chat_id بشكل آمن لمنع خطأ الإنلاين
+        chat_id = query.message.chat_id if query.message else user.id
 
         cat_names = {
             "truth": "🟢 قسم الصراحة",
