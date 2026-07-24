@@ -1,4 +1,4 @@
-import os # تم إضافة هذا السطر لاستيراد مكتبة النظام
+import os 
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -8,7 +8,6 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# استيراد دوال ومعالجات جميع الألعاب الخمس
 from tictactoe import tictactoe_start, tictactoe_button_handler
 from rps import rps_start, rps_button_handler
 from treasure import treasure_start, treasure_button_handler
@@ -20,7 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-.
+
 TOKEN = os.getenv("TOKEN")
 
 
