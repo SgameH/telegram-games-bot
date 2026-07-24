@@ -251,7 +251,7 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
     data = query.data
     user = query.from_user
     message = query.message
-    chat_id = message.chat_id if message else None
+    chat_id = message.chat_id if message else (query.effective_chat.id if query.effective_chat else None)
 
     if data == "check_sub":
         is_subscribed = await check_subscription(user.id, context)
@@ -279,10 +279,11 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
         await show_help_menu(update, context)
         return
 
-    if not message:
+    if not chat_id:
         return
 
-    fake_update = FakeUpdate(chat_id, context.bot, user, message.id, query)
+    message_id = message.id if message else None
+    fake_update = FakeUpdate(chat_id, context.bot, user, message_id, query)
 
     if data == "menu_ttt":
         context.args = []
@@ -342,7 +343,7 @@ def main():
     app.add_handler(CommandHandler("start", main_start))
     app.add_handler(CommandHandler("games", games_command))
     app.add_handler(CommandHandler("ttt", tictactoe_start))
-    app.add_handler(CommandHandlers := CommandHandler("rps", rps_start))
+    app.add_handler(CommandHandler("rps", rps_start))
     app.add_handler(CommandHandler("treasure", treasure_start))
     app.add_handler(CommandHandler("traps", traps_start))
     app.add_handler(CommandHandler("battleship", battleship_start))
