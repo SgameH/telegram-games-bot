@@ -2,34 +2,25 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 logger = logging.getLogger(__name__)
-
 
 active_rps_games = {}
 
 
-BOT_USERNAME = "SgameHbot"
-
-
-def get_rps_keyboard(game_id, chosen=False):
-
-    if chosen:
-        return InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ تم اختيارك بنجاح، بانتظار الخصم...", callback_data="none")]
-        ])
-    
+def get_rps_keyboard(game_id):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🪨 حجر", callback_data=f"rps_{game_id}_rock"),
-            InlineKeyboardButton("📄 ورقة", callback_data=f"rps_{game_id}_paper"),
-            InlineKeyboardButton("✂️ مقص", callback_data=f"rps_{game_id}_scissors"),
+            InlineKeyboardButton("🪨 حجر", callback_data=f"rps_pick_{game_id}_rock"),
+            InlineKeyboardButton("📄 ورقة", callback_data=f"rps_pick_{game_id}_paper"),
+            InlineKeyboardButton("✂️ مقص", callback_data=f"rps_pick_{game_id}_scissors"),
         ]
     ])
 
 
 def determine_winner(choice1, choice2):
-
     if choice1 == choice2:
         return "tie"
     if (
@@ -43,94 +34,35 @@ def determine_winner(choice1, choice2):
 
 async def rps_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    args = context.args
     chat_id = update.effective_chat.id
+    
+    game_id = f"rps_{chat_id}_{user.id}"
 
-    if args and args[0].startswith("rps_"):
-        game_id = args[0]
-
-        if game_id not in active_rps_games:
-            active_rps_games[game_id] = {
-                "player_1": user.id,
-                "chat_1": chat_id,
-                "name_1": user.first_name,
-                "player_2": None,
-                "chat_2": None,
-                "name_2": "بانتظار لاعب...",
-                "choice_1": None,
-                "choice_2": None,
-                "msg_id_1": None,
-                "msg_id_2": None,
-            }
-            await update.message.reply_text(
-                f"🎮 أهلاً بك يا {user.first_name} في تحدي حجر-ورقة-مقص!\n\n"
-                f"🔗 شارك هذا الرابط مع صديقك ليبدأ التحدي:\n"
-                f"https://t.me/{BOT_USERNAME}?start={game_id}"
-            )
-            return
-
-        game = active_rps_games[game_id]
-
-        if game["player_2"] is None and game["player_1"] != user.id:
-            game["player_2"] = user.id
-            game["chat_2"] = chat_id
-            game["name_2"] = user.first_name
-
-            await update.message.reply_text(
-                f"🎮 انضممت بنجاح يا {user.first_name} ضد {game['name_1']}!\n"
-                f"اختر حركتك سراً من الأسفل:"
-            )
-
-
-            keyboard_1 = get_rps_keyboard(game_id)
-            keyboard_2 = get_rps_keyboard(game_id)
-
-            msg_1 = await context.bot.send_message(
-                chat_id=game["chat_1"],
-                text=f"⚔️ معركة حجر 🪨 ورقة 📄 مقص ✂️\n\nضد: {game['name_2']}\nاختر حركتك:",
-                reply_markup=keyboard_1
-            )
-            game["msg_id_1"] = msg_1.message_id
-
-            msg_2 = await context.bot.send_message(
-                chat_id=game["chat_2"],
-                text=f"⚔️ معركة حجر 🪨 ورقة 📄 مقص ✂️\n\nضد: {game['name_1']}\nاختر حركتك:",
-                reply_markup=keyboard_2
-            )
-            game["msg_id_2"] = msg_2.message_id
-            return
-
-        elif game["player_1"] == user.id or game["player_2"] == user.id:
-            await update.message.reply_text("أنت مشارك بالفعل في هذه اللعبة النشطة!")
-            return
-        else:
-            await update.message.reply_text("عذراً، هذه اللعبة مكتملة اللاعبين بالفعل!")
-            return
-
-
-    game_id = f"rps_{user.id}"
     active_rps_games[game_id] = {
         "player_1": user.id,
         "chat_1": chat_id,
         "name_1": user.first_name,
         "player_2": None,
-        "chat_2": None,
+        "chat_2": chat_id,
         "name_2": "بانتظار لاعب...",
         "choice_1": None,
         "choice_2": None,
-        "msg_id_1": None,
-        "msg_id_2": None,
+        "msg_id": None,
     }
 
-    invite_link = f"https://t.me/{BOT_USERNAME}?start={game_id}"
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎮 انضم وتحدَ اللاعب كـ ⭕", callback_data=f"rps_join_{game_id}")]
+    ])
 
-    await update.message.reply_text(
-        f"✊ أهلاً بك يا {user.first_name} في لعبة حجر - ورقة - مقص!\n\n"
-        f"لقد أنشأت جلسة جديدة خاصة بك.\n"
-        f"🔗 رابط دعوة الصديق:\n"
-        f"https://t.me/{BOT_USERNAME}?start={game_id}\n\n"
-        f"قم بنسخ هذا الرابط وأرسله لصديقك، وبمجرد دخوله ستبدأ اللعبة تلقائياً!"
+    text = (
+        f"✊ **لعبة حجر - ورقة - مقص**\n\n"
+        f"👤 أنشأ التحدي: **{user.first_name}**\n"
+        f"⏳ في انتظار انضمام المنافس..."
     )
+
+    if update.message:
+        msg = await update.message.reply_text(text, reply_markup=keyboard, parse_mode="Markdown")
+        active_rps_games[game_id]["msg_id"] = msg.message_id
 
 
 async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,13 +72,47 @@ async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     data = query.data
     user = query.from_user
 
-    if data.startswith("rps_") and not data.startswith("rps_restart_"):
+    # معالجة انضمام اللاعب الثاني مباشرة من نفس الرسالة
+    if data.startswith("rps_join_"):
+        game_id = data.replace("rps_join_", "")
+        if game_id not in active_rps_games:
+            await query.answer("انتهت صلاحية هذه اللعبة.", show_alert=True)
+            return
+
+        game = active_rps_games[game_id]
+
+        if game["player_1"] == user.id:
+            await query.answer("لا يمكنك اللعب ضد نفسك!", show_alert=True)
+            return
+
+        if game["player_2"] is not None:
+            await query.answer("اللعبة مكتملة اللاعبين بالفعل!", show_alert=True)
+            return
+
+        game["player_2"] = user.id
+        game["name_2"] = user.first_name
+
+        keyboard = get_rps_keyboard(game_id)
+        text = (
+            f"✊ **معركة حجر 🪨 ورقة 📄 مقص ✂️**\n\n"
+            f"⚔️ {game['name_1']} ضد {game['name_2']}\n"
+            f"اختر حركتك سرياً عبر الأزرار أدناه:"
+        )
+
+        try:
+            await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
+        except Exception:
+            pass
+        return
+
+    # معالجة اختيار الحركات
+    if data.startswith("rps_pick_"):
         parts = data.split("_")
         choice = parts[-1]
-        game_id = "_".join(parts[1:-1])
+        game_id = "_".join(parts[2:-1])
 
         if game_id not in active_rps_games:
-            await query.edit_message_text("انتهت صلاحية هذه اللعبة أو تم حذفها.")
+            await query.answer("انتهت صلاحية هذه اللعبة أو تم حذفها.", show_alert=True)
             return
 
         game = active_rps_games[game_id]
@@ -154,7 +120,6 @@ async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if user.id not in [game["player_1"], game["player_2"]]:
             await query.answer("لست مشاركاً في هذه اللعبة!", show_alert=True)
             return
-
 
         if user.id == game["player_1"]:
             if game["choice_1"] is not None:
@@ -167,20 +132,7 @@ async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 return
             game["choice_2"] = choice
 
-
-        try:
-            current_msg_id = game["msg_id_1"] if user.id == game["player_1"] else game["msg_id_2"]
-            current_chat_id = game["chat_1"] if user.id == game["player_1"] else game["chat_2"]
-            await context.bot.edit_message_text(
-                chat_id=current_chat_id,
-                message_id=current_msg_id,
-                text="✅ تم تسجيل اختيارك بنجاح. بانتظار أن يختار الخصم...",
-                reply_markup=get_rps_keyboard(game_id, chosen=True)
-            )
-        except Exception:
-            pass
-
-
+        # التحقق إذا اختار الاثنان معا
         if game["choice_1"] is not None and game["choice_2"] is not None:
             c1 = game["choice_1"]
             c2 = game["choice_2"]
@@ -189,25 +141,36 @@ async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             emoji_map = {"rock": "🪨 حجر", "paper": "📄 ورقة", "scissors": "✂️ مقص"}
 
             if res == "tie":
-                text_1 = f"🤝 تعادل!\nاختيارك: {emoji_map[c1]}\nاختيار خصمك: {emoji_map[c2]}"
-                text_2 = f"🤝 تعادل!\nاختيارك: {emoji_map[c2]}\nاختيار خصمك: {emoji_map[c1]}"
+                result_text = "🤝 **تعادل الفريقان!**"
             elif res == "player1":
-                text_1 = f"🏆 مبروك، لقد فزت!\nاختيارك: {emoji_map[c1]}\nاختيار خصمك: {emoji_map[c2]}"
-                text_2 = f"❌ هاردلك، لقد خسرت!\nاختيارك: {emoji_map[c2]}\nاختيار خصمك: {emoji_map[c1]}"
+                result_text = f"🏆 **الفائز هو:** {game['name_1']} 🎊"
             else:
-                text_1 = f"❌ هاردلك، لقد خسرت!\nاختيارك: {emoji_map[c1]}\nاختيار خصمك: {emoji_map[c2]}"
-                text_2 = f"🏆 مبروك، لقد فزت!\nاختيارك: {emoji_map[c2]}\nاختيار خصمك: {emoji_map[c1]}"
+                result_text = f"🏆 **الفائز هو:** {game['name_2']} 🎊"
+
+            text = (
+                f"🎮 **نتائج لعبة حجر - ورقة - مقص**\n\n"
+                f"👤 {game['name_1']} اختر: {emoji_map[c1]}\n"
+                f"👤 {game['name_2']} اختر: {emoji_map[c2]}\n\n"
+                f"{result_text}"
+            )
 
             restart_kb = InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 إلعادة التحدي", callback_data=f"rps_restart_{game_id}")]
+                [InlineKeyboardButton("🔄 إعادة التحدي", callback_data=f"rps_restart_{game_id}")]
             ])
 
             try:
-                await context.bot.edit_message_text(chat_id=game["chat_1"], message_id=game["msg_id_1"], text=text_1, reply_markup=restart_kb)
+                await query.edit_message_text(text=text, reply_markup=restart_kb, parse_mode="Markdown")
             except Exception:
                 pass
+        else:
+            waiting_user = game["name_2"] if user.id == game["player_1"] else game["name_1"]
+            current_picker = game["name_1"] if user.id == game["player_1"] else game["name_2"]
             try:
-                await context.bot.edit_message_text(chat_id=game["chat_2"], message_id=game["msg_id_2"], text=text_2, reply_markup=restart_kb)
+                await query.edit_message_text(
+                    text=f"✊ **لعبة حجر - ورقة - مقص**\n\n✅ قام **{current_picker}** باختياره.\n⏳ بانتظار أن يقوم **{waiting_user}** باختياره...",
+                    reply_markup=get_rps_keyboard(game_id),
+                    parse_mode="Markdown"
+                )
             except Exception:
                 pass
 
@@ -220,27 +183,14 @@ async def rps_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
             game["choice_1"] = None
             game["choice_2"] = None
 
-            keyboard_1 = get_rps_keyboard(game_id)
-            keyboard_2 = get_rps_keyboard(game_id)
+            keyboard = get_rps_keyboard(game_id)
+            text = (
+                f"🔄 **جولة جديدة!**\n\n"
+                f"⚔️ {game['name_1']} ضد {game['name_2']}\n"
+                f"اختر حركتك الجديدة:"
+            )
 
             try:
-                msg_1 = await context.bot.edit_message_text(
-                    chat_id=game["chat_1"],
-                    message_id=game["msg_id_1"],
-                    text=f"🔄 جولة جديدة!\nضد: {game['name_2']}\nاختر حركتك:",
-                    reply_markup=keyboard_1
-                )
-                game["msg_id_1"] = msg_1.message_id
-            except Exception:
-                pass
-
-            try:
-                msg_2 = await context.bot.edit_message_text(
-                    chat_id=game["chat_2"],
-                    message_id=game["msg_id_2"],
-                    text=f"🔄 جولة جديدة!\nضد: {game['name_1']}\nاختر حركتك:",
-                    reply_markup=keyboard_2
-                )
-                game["msg_id_2"] = msg_2.message_id
+                await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
             except Exception:
                 pass
