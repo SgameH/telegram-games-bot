@@ -2,23 +2,17 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-
 logger = logging.getLogger(__name__)
 
-
 active_games = {}
-
-
 BOT_USERNAME = "SgameHbot"
 
 
 def create_board():
-
     return [[" " for _ in range(3)] for _ in range(3)]
 
 
 def get_board_keyboard(board, game_id, game_over=False):
-
     keyboard = []
     for r_idx, row in enumerate(board):
         row_buttons = []
@@ -35,7 +29,6 @@ def get_board_keyboard(board, game_id, game_over=False):
 
 
 def check_winner(board):
-
     for i in range(3):
         if board[i][0] == board[i][1] == board[i][2] and board[i][0] != " ":
             return board[i][0]
@@ -55,87 +48,36 @@ def check_winner(board):
 
 async def tictactoe_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    args = context.args
     chat_id = update.effective_chat.id
+    
+    # إنشاء معرف فريد للعبة يعتمد على المحادثة أو الوقت لتبقى الرسالة في نفس الشات
+    game_id = f"tictactoe_{chat_id}_{user.id}"
 
-    if args and args[0].startswith("game_"):
-        game_id = args[0]
-
-        if game_id not in active_games:
-            active_games[game_id] = {
-                "player_X": user.id,
-                "chat_X": chat_id,
-                "name_X": user.first_name,
-                "player_O": None,
-                "chat_O": None,
-                "name_O": "بانتظار لاعب...",
-                "board": create_board(),
-                "turn": user.id,
-            }
-            await update.message.reply_text(
-                f"🎮 أهلاً بك يا {user.first_name}!\n"
-                f"أنشأت جلسة جديدة لهذه اللعبة.\n\n"
-                f"🔗 شارك هذا الرابط مع صديقك ليبدأ التحدي:\n"
-                f"https://t.me/{BOT_USERNAME}?start={game_id}"
-            )
-            return
-
-        game = active_games[game_id]
-
-        if game["player_O"] is None and game["player_X"] != user.id:
-            game["player_O"] = user.id
-            game["chat_O"] = chat_id
-            game["name_O"] = user.first_name
-
-            await update.message.reply_text(
-                f"🎮 انضممت بنجاح يا {user.first_name} ضد {game['name_X']}!\n"
-                f"دع المعركة تبدأ ❌ ضد ⭕!"
-            )
-
-
-            keyboard = get_board_keyboard(game["board"], game_id)
-            
-            text_x = (
-                f"⚔️ لعبة XO بين:\n"
-                f"❌ {game['name_X']} ضد ⭕ {game['name_O']}\n\n"
-                f"دور اللاعب: ❌ {game['name_X']}"
-            )
-            text_o = text_x
-
-            msg_x = await context.bot.send_message(chat_id=game["chat_X"], text=text_x, reply_markup=keyboard)
-            game["msg_id_X"] = msg_x.message_id
-
-            msg_o = await context.bot.send_message(chat_id=game["chat_O"], text=text_o, reply_markup=keyboard)
-            game["msg_id_O"] = msg_o.message_id
-            return
-
-        elif game["player_X"] == user.id or game["player_O"] == user.id:
-            await update.message.reply_text("أنت مشارك بالفعل في هذه اللعبة النشطة!")
-            return
-        else:
-            await update.message.reply_text("عذراً، هذه اللعبة مكتملة اللاعبين بالفعل!")
-            return
-
-    game_id = f"game_{user.id}"
     active_games[game_id] = {
         "player_X": user.id,
         "chat_X": chat_id,
         "name_X": user.first_name,
         "player_O": None,
-        "chat_O": None,
+        "chat_O": chat_id,
         "name_O": "بانتظار لاعب...",
         "board": create_board(),
         "turn": user.id,
+        "msg_id": None
     }
 
-    invite_link = f"https://t.me/{BOT_USERNAME}?start={game_id}"
+    # زر انضمام يضغط عليه اللاعب الثاني مباشرة في نفس الشات
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎮 انضم والعب كـ ⭕", callback_data=f"join_{game_id}")]
+    ])
 
-    await update.message.reply_text(
-        f"👋 أهلاً بك يا {user.first_name} في لعبة XO الاحترافية!\n\n"
-        f"لقد أنشأت جلسة جديدة خاصة بك.\n"
-        f"🔗 رابط دعوة الصديق:\n{invite_link}\n\n"
-        f"قم بنسخ هذا الرابط وأرسله لصديقك، وبمجرد دخوله ستبدأ اللعبة تلقائياً!"
+    msg = await update.message.reply_text(
+        f"🎮 **تحدي جديد في لعبة XO**\n\n"
+        f"👤 أنشأ التحدي: **{user.first_name}** (❌)\n"
+        f"⏳ في انتظار انضمام المنافس...",
+        reply_markup=keyboard,
+        parse_mode="Markdown"
     )
+    active_games[game_id]["msg_id"] = msg.message_id
 
 
 async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -145,6 +87,41 @@ async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT
     data = query.data
     user = query.from_user
 
+    # معالجة انضمام اللاعب الثاني مباشرة من نفس الرسالة
+    if data.startswith("join_"):
+        game_id = data.replace("join_", "")
+        if game_id not in active_games:
+            await query.answer("انتهت صلاحية هذه اللعبة.", show_alert=True)
+            return
+
+        game = active_games[game_id]
+
+        if game["player_X"] == user.id:
+            await query.answer("لا يمكنك اللعب ضد نفسك!", show_alert=True)
+            return
+
+        if game["player_O"] is not None:
+            await query.answer("اللعبة مكتملة اللاعبين بالفعل!", show_alert=True)
+            return
+
+        game["player_O"] = user.id
+        game["name_O"] = user.first_name
+        game["turn"] = game["player_X"]
+
+        keyboard = get_board_keyboard(game["board"], game_id)
+        text = (
+            f"⚔️ **لعبة XO قائمة الآن**\n"
+            f"❌ {game['name_X']} ضد ⭕ {game['name_O']}\n\n"
+            f"دور اللاعب: ❌ {game['name_X']}"
+        )
+
+        try:
+            await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
+        except Exception:
+            pass
+        return
+
+    # معالجة ضغطات مربعات اللعب داخل الشات
     if data.startswith("play_"):
         parts = data.split("_")
         r = int(parts[-2])
@@ -152,7 +129,7 @@ async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT
         game_id = "_".join(parts[1:-2])
 
         if game_id not in active_games:
-            await query.edit_message_text("انتهت صلاحية هذه اللعبة أو تم حذفها.")
+            await query.answer("انتهت صلاحية هذه اللعبة أو تم حذفها.", show_alert=True)
             return
 
         game = active_games[game_id]
@@ -182,17 +159,13 @@ async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT
             game_over = True
             keyboard = get_board_keyboard(game["board"], game_id, game_over=True)
             if winner == "Tie":
-                text = f"🤝 تعادل الفريقان!\n\n❌ {game['name_X']} ضد ⭕ {game['name_O']}"
+                text = f"🤝 **تعادل الفريقان!**\n\n❌ {game['name_X']} ضد ⭕ {game['name_O']}"
             else:
                 winner_name = game["name_X"] if winner == "❌" else game["name_O"]
-                text = f"🏆 مبروك الفوز!\nالفائز هو: {winner} {winner_name} 🎊"
+                text = f"🏆 **انتهت اللعبة!**\nالفائز هو: {winner} {winner_name} 🎊"
             
             try:
-                await context.bot.edit_message_text(chat_id=game["chat_X"], message_id=game["msg_id_X"], text=text, reply_markup=keyboard)
-            except Exception:
-                pass
-            try:
-                await context.bot.edit_message_text(chat_id=game["chat_O"], message_id=game["msg_id_O"], text=text, reply_markup=keyboard)
+                await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
             except Exception:
                 pass
             return
@@ -203,17 +176,13 @@ async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT
 
         keyboard = get_board_keyboard(game["board"], game_id)
         text = (
-            f"⚔️ لعبة XO بين:\n"
+            f"⚔️ **لعبة XO قائمة الآن**\n"
             f"❌ {game['name_X']} ضد ⭕ {game['name_O']}\n\n"
             f"دور اللاعب: {next_symbol} {next_name}"
         )
 
         try:
-            await context.bot.edit_message_text(chat_id=game["chat_X"], message_id=game["msg_id_X"], text=text, reply_markup=keyboard)
-        except Exception:
-            pass
-        try:
-            await context.bot.edit_message_text(chat_id=game["chat_O"], message_id=game["msg_id_O"], text=text, reply_markup=keyboard)
+            await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
         except Exception:
             pass
 
@@ -228,16 +197,12 @@ async def tictactoe_button_handler(update: Update, context: ContextTypes.DEFAULT
 
             keyboard = get_board_keyboard(game["board"], game_id)
             text = (
-                f"🔄 بدأت مباراة جديدة!\n"
+                f"🔄 **بدأت مباراة جديدة!**\n"
                 f"❌ {game['name_X']} ضد ⭕ {game['name_O']}\n\n"
                 f"دور اللاعب: ❌ {game['name_X']}"
             )
 
             try:
-                await context.bot.edit_message_text(chat_id=game["chat_X"], message_id=game["msg_id_X"], text=text, reply_markup=keyboard)
-            except Exception:
-                pass
-            try:
-                await context.bot.edit_message_text(chat_id=game["chat_O"], message_id=game["msg_id_O"], text=text, reply_markup=keyboard)
+                await query.edit_message_text(text=text, reply_markup=keyboard, parse_mode="Markdown")
             except Exception:
                 pass
