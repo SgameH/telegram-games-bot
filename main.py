@@ -251,7 +251,13 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
     data = query.data
     user = query.from_user
     message = query.message
-    chat_id = message.chat_id if message else (query.effective_chat.id if query.effective_chat else None)
+    
+    # الحل الآمن لاستخراج معرف المحادثة بدقة تامة
+    chat_id = None
+    if message and hasattr(message, "chat_id") and message.chat_id:
+        chat_id = message.chat_id
+    elif update.effective_chat:
+        chat_id = update.effective_chat.id
 
     if data == "check_sub":
         is_subscribed = await check_subscription(user.id, context)
