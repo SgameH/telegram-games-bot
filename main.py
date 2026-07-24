@@ -1,13 +1,11 @@
-import os
+Import os 
 import logging
-import uuid
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InlineQueryResultArticle, InputTextMessageContent
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
-    InlineQueryHandler,
 )
 
 from tictactoe import tictactoe_start, tictactoe_button_handler
@@ -21,35 +19,39 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 TOKEN = os.getenv("TOKEN")
-CHANNEL_USERNAME = "@SgameH"
-CHANNEL_URL = "https://t.me/SgameH"
+
+
+CHANNEL_USERNAME = "@SgameH" 
+
+CHANNEL_URL = "https://t.me/SgameH" 
+
 
 class FakeMessage:
-    def __init__(self, chat_id, bot, from_user, message_id=None):
+
+    def __init__(self, chat_id, bot, from_user):
         self.chat_id = chat_id
         self._bot = bot
         self.from_user = from_user
-        self.message_id = message_id
 
     async def reply_text(self, text, **kwargs):
         return await self._bot.send_message(chat_id=self.chat_id, text=text, **kwargs)
 
-    async def edit_text(self, text, **kwargs):
-        if self.message_id:
-            return await self._bot.edit_message_text(chat_id=self.chat_id, message_id=self.message_id, text=text, **kwargs)
-        return await self.reply_text(text, **kwargs)
 
 class FakeUpdate:
-    def __init__(self, chat_id, bot, user, message_id=None, callback_query=None):
-        self.message = FakeMessage(chat_id, bot, user, message_id)
+
+    def __init__(self, chat_id, bot, user):
+        self.message = FakeMessage(chat_id, bot, user)
         self.effective_user = user
         self.effective_chat = type('obj', (object,), {'id': chat_id})()
-        self.callback_query = callback_query
+
 
 async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
+
     try:
         member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
+
         if member.status in ["member", "administrator", "creator"]:
             return True
     except Exception as e:
@@ -57,12 +59,14 @@ async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
         return False
     return False
 
+
 async def ask_to_subscribe(update: Update):
+
     text = (
-        "⚠️ عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية!\n\n"
-        "📢 يرجى الاشتراك في القناة أولاً لتتمكن من اللعب واستخدام كافة الميزات:\n"
-        f"{CHANNEL_URL}\n\n"
-        "✅ بعد الانضمام، اضغط على زر 'تحقق من الاشتراك'."
+        "⚠️ **عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية!**\n\n"
+        "يرجى الاشتراك في القناة أولاً لتتمكن من اللعب واستخدام كافة الميزات:\n"
+        f"🔗 {CHANNEL_URL}\n\n"
+        "بعد الانضمام، اضغط على زر **'تحقق من الاشتراك 🔄'** أدناه."
     )
     keyboard = [
         [InlineKeyboardButton("📢 اشترك في القناة", url=CHANNEL_URL)],
@@ -72,93 +76,19 @@ async def ask_to_subscribe(update: Update):
 
     if update.callback_query:
         try:
-            await update.callback_query.message.edit_text(text, reply_markup=reply_markup)
+            await update.callback_query.message.edit_text(text, reply_markup=reply_markup, parse_mode="Markdown")
         except Exception:
             pass
     else:
-        await update.message.reply_text(text, reply_markup=reply_markup)
+        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
-async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    bot_username = context.bot.username
-    
-    if user and not await check_subscription(user.id, context):
-        results = [
-            InlineQueryResultArticle(
-                id=str(uuid.uuid4()),
-                title="⚠️ يجب الاشتراك بالقناة أولاً للعب!",
-                description="اضغط هنا للاشتراك في قناة البوت الرسمية.",
-                input_message_content=InputTextMessageContent(
-                    message_text=f"⚠️ عذراً، لا يمكنك استخدام البوت قبل الاشتراك في قناة البوت الرسمية:\n{CHANNEL_URL}"
-                ),
-            )
-        ]
-        await update.inline_query.answer(results, cache_time=0)
-        return
-
-    results = [
-        InlineQueryResultArticle(
-            id="ttt_game",
-            title="❌ لعبة اكس أو (Tic Tac Toe) ⭕",
-            description="تحدى صديقك في لعبة اكس أو الشهيرة داخل المحادثة!",
-            input_message_content=InputTextMessageContent(
-                message_text="🎮 تم إنشاء تحدي جديد في لعبة اكس أو (Tic Tac Toe)!\n👇 اضغط على الزر أدناه للدخول والبدء باللعب معاً:"
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=game_ttt")]
-            ])
-        ),
-        InlineQueryResultArticle(
-            id="rps_game",
-            title="✊ حجر - ✋ ورقة - ✌️ مقص",
-            description="تحدى صديقك في لعبة المواجهة السريعة.",
-            input_message_content=InputTextMessageContent(
-                message_text="🎮 تحدي حجر - ورقة - مقص:\n👇 اضغط على الزر أدناه للدخول واختيار حركتك:"
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=rps_start")]
-            ])
-        ),
-        InlineQueryResultArticle(
-            id="treasure_game",
-            title="💰 جزيرة الكنوز والأموال 🏝️",
-            description="تنافس مع صديقك في التنقيب عن الكنوز.",
-            input_message_content=InputTextMessageContent(
-                message_text="🎮 تحدي جزيرة الكنوز والأموال:\n👇 اضغط على الزر أدناه لاختبار حظك والتنقيب:"
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=gold_start")]
-            ])
-        ),
-        InlineQueryResultArticle(
-            id="traps_game",
-            title="💣 الصناديق المفخخة 📦",
-            description="تجنب الفخاخ واكتشف الصناديق الآمنة.",
-            input_message_content=InputTextMessageContent(
-                message_text="🎮 تحدي الصناديق المفخخة:\n👇 اضغط على الزر أدناه للبدء بحذر:"
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=trap_start")]
-            ])
-        ),
-        InlineQueryResultArticle(
-            id="battleship_game",
-            title="🚢 السفن الحربية 🎯",
-            description="معركة بحرية استراتيجية لتدمير أسطول الخصم.",
-            input_message_content=InputTextMessageContent(
-                message_text="🎮 تحدي السفن الحربية الاستراتيجية:\n👇 اضغط على الزر أدناه لبدء المعركة:"
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🚀 ابدأ التحدي الآن", url=f"https://t.me/{bot_username}?start=bs_start")]
-            ])
-        )
-    ]
-    await update.inline_query.answer(results, cache_time=5)
 
 async def main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     user = update.effective_user
     if not user:
         return
+
 
     is_subscribed = await check_subscription(user.id, context)
     if not is_subscribed:
@@ -168,7 +98,8 @@ async def main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if args and len(args) > 0:
         payload = args[0]
-        if payload.startswith("game_") or payload == "game_ttt":
+
+        if payload.startswith("game_"):
             await tictactoe_start(update, context)
             return
         elif payload.startswith("rps_"):
@@ -184,28 +115,31 @@ async def main_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await battleship_start(update, context)
             return
 
+
     await games_command(update, context)
 
+
 async def games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     user = update.effective_user
     if user and not await check_subscription(user.id, context):
         await ask_to_subscribe(update)
         return
 
     user_name = user.first_name if user else "صديقي"
-    menu_text = f"🌟 أهلاً بك يا **{user_name}** في بوت الألعاب الجماعية!\n\n🎮 اختر اللعبة التي ترغب بها لإنشاء رابط التحدي ومشاركته مع أصدقائك:"
+    menu_text = f"🎮 **قائمة الألعاب المتاحة يا {user_name}:**\nاختر اللعبة لإنشاء رابط التحدي ومشاركته مع صديقك:"
 
     keyboard = [
-        [InlineKeyboardButton("❌ لعبة اكس أو (Tic Tac Toe) ⭕", callback_data="menu_ttt")],
-        [InlineKeyboardButton("✊ حجر - ✋ ورقة - ✌️ مقص", callback_data="menu_rps")],
-        [InlineKeyboardButton("💰 جزيرة الكنوز والأموال 🏝️", callback_data="menu_treasure")],
-        [InlineKeyboardButton("💣 الصناديق المفخخة 📦", callback_data="menu_traps")],
-        [InlineKeyboardButton("🚢 السفن الحربية 🎯", callback_data="menu_battleship")],
-        [InlineKeyboardButton("📚 تعليمات وشرح الألعاب", callback_data="show_help")]
+        [InlineKeyboardButton("❌ لعبة اكس أو ⭕", callback_data="menu_ttt")],
+        [InlineKeyboardButton("✊ حجر - ورقة - مقص", callback_data="menu_rps")],
+        [InlineKeyboardButton("🏴‍☠️ جزيرة الكنوز والأموال", callback_data="menu_treasure")],
+        [InlineKeyboardButton("💣 الصناديق المفخخة", callback_data="menu_traps")],
+        [InlineKeyboardButton("⚓ السفن الحربية", callback_data="menu_battleship")],
+        [InlineKeyboardButton("📖 تعليمات وشرح الألعاب", callback_data="show_help")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.callback_query and update.callback_query.message:
+    if update.callback_query:
         try:
             await update.callback_query.message.edit_text(menu_text, reply_markup=reply_markup, parse_mode="Markdown")
         except Exception:
@@ -213,24 +147,31 @@ async def games_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(menu_text, reply_markup=reply_markup, parse_mode="Markdown")
 
+
 async def show_help_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     user = update.effective_user
     if user and not await check_subscription(user.id, context):
         await ask_to_subscribe(update)
         return
 
     help_text = (
-        "📚 **دليل وتعليمات ألعاب البوت الجماعية:**\n\n"
+        "📖 **دليل وتعليمات ألعاب البوت الجماعية:**\n\n"
         "1️⃣ **لعبة اكس أو (Tic Tac Toe):**\n"
-        "• الفكرة: اللعبة الكلاسيكية الشهيرة لترتيب 3 رموز متتالية (X أو O).\n\n"
-        "2️⃣ **حجر - ورقة - مقص:**\n"
-        "• الفكرة: المواجهة السريعة المعروفة لتحديد الفائز.\n\n"
-        "3️⃣ **جزيرة الكنوز والأموال:**\n"
-        "• الفكرة: مغامرة استكشاف للبحث عن الصناديق التي تحمل الكنوز الثمينة.\n\n"
-        "4️⃣ **الصناديق المفخخة:**\n"
-        "• الفكرة: اختبار حظ وتفكير لتجنب الصناديق المفخخة.\n\n"
-        "5️⃣ **السفن الحربية:**\n"
-        "• الفكرة: معركة بحرية استراتيجية لتدمير أسطول الخصم."
+        "• **الفكرة:** لعبة الكلاسيكية الشهيرة لترتيب 3 رموز متتالية (أفقياً، عمودياً، أو قطرياً).\n"
+        "• **طريقة اللعب:** اختر اللعبة من القائمة لإنشاء رابط تحدٍ، أرسله لصديقك، وبمجرد دخوله ستبدأ المعركة التفاعلية وتبادلون الأدوار بالضغط على المربعات.\n\n"
+        "2️⃣ **حجر - ورقة - مقص (Rock Paper Scissors):**\n"
+        "• **الفكرة:** المواجهة السريعة المعروفة (الحجر يكسر المقَص، المقَص يقطع الورقة، الورقة تغلف الحجر).\n"
+        "• **طريقة اللعب:** أنشئ رابط التحدي وأرسله لصديقك ليختار حركته سراً وتظهر النتيجة فوراً لتحديد الفائز.\n\n"
+        "3️⃣ **جزيرة الكنوز والأموال (Treasure):**\n"
+        "• **الفكرة:** مغامرة استكشاف والحفر للبحث عن الكنوز الثمينة وتجنب الخسارة.\n"
+        "• **طريقة اللعب:** شارك رابط التحدي وتنافس مع صديقك في التنقيب واكتشاف أكبر قدر من الكنوز المخفية.\n\n"
+        "4️⃣ **الصناديق المفخخة (Traps):**\n"
+        "• **الفكرة:** اختبار حظ وتفكير بحت لتجنب الصناديق المفخخة.\n"
+        "• **طريقة اللعب:** أنشئ التحدي وأرسله لصديقك، وكل لاعب يحاول اختيار الصناديق الآمنة والابتعاد عن الفخاخ حتى النهاية.\n\n"
+        "5️⃣ **السفن الحربية (Battleship):**\n"
+        "• **الفكرة:** معركة بحرية استراتيجية لتدمير أسطول الخصم.\n"
+        "• **طريقة اللعب:** قم بدعوة صديقك عبر رابط التحدي وابدءا تبادل الضربات الاستراتيجية لإغراق سفن بعضكما البعض!"
     )
 
     keyboard = [
@@ -238,38 +179,34 @@ async def show_help_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    if update.callback_query and update.callback_query.message:
+    if update.callback_query:
         try:
             await update.callback_query.message.edit_text(help_text, reply_markup=reply_markup, parse_mode="Markdown")
         except Exception:
             pass
 
-async def universal_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    if not query:
-        return
 
+async def universal_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
     data = query.data
+    chat_id = query.message.chat_id
     user = query.from_user
-    message = query.message
-    
-    chat_id = None
-    if message and hasattr(message, "chat_id") and message.chat_id:
-        chat_id = message.chat_id
-    elif update.effective_chat:
-        chat_id = update.effective_chat.id
+
 
     if data == "check_sub":
         is_subscribed = await check_subscription(user.id, context)
         if is_subscribed:
-            await query.answer("🎉 شكراً لاشتراكك! تم فتح البوت بنجاح.", show_alert=True)
+            await query.answer("✅ شكراً لاشتراكك! تم فتح البوت بنجاح.", show_alert=True)
             await games_command(update, context)
         else:
+
             await query.answer(
-                "⚠️ عذراً، لم تقم بالاشتراك في القناة بعد!\nيرجى الضغط على زر 'اشترك في القناة' أولاً.",
+                "❌ عذراً، لم تقم بالاشتراك في القناة بعد!\nيرجى الضغط على زر 'اشترك في القناة' أولاً ثم حاول مرة أخرى.",
                 show_alert=True
             )
         return
+
 
     if not await check_subscription(user.id, context):
         await query.answer()
@@ -285,11 +222,8 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
         await show_help_menu(update, context)
         return
 
-    if not chat_id:
-        return
+    fake_update = FakeUpdate(chat_id, context.bot, user)
 
-    message_id = message.id if message else None
-    fake_update = FakeUpdate(chat_id, context.bot, user, message_id, query)
 
     if data == "menu_ttt":
         context.args = []
@@ -312,36 +246,23 @@ async def universal_callback_handler(update: Update, context: ContextTypes.DEFAU
         await battleship_start(fake_update, context)
         return
 
+
     if data.startswith("play_") or data.startswith("restart_"):
         await tictactoe_button_handler(update, context)
     elif data.startswith("rps_"):
-        data_parts = data.split("_")
-        if len(data_parts) > 1 and data_parts[1] == "start":
-            await rps_start(fake_update, context)
-        else:
-            await rps_button_handler(update, context)
+        await rps_button_handler(update, context)
     elif data.startswith("gold_"):
-        data_parts = data.split("_")
-        if len(data_parts) > 1 and data_parts[1] == "start":
-            await treasure_start(fake_update, context)
-        else:
-            await treasure_button_handler(update, context)
+        await treasure_button_handler(update, context)
     elif data.startswith("trap_"):
-        data_parts = data.split("_")
-        if len(data_parts) > 1 and data_parts[1] == "start":
-            await traps_start(fake_updates, context) if 'fake_updates' in locals() else await traps_start(fake_update, context)
-        else:
-            await traps_button_handler(update, context)
+        await traps_button_handler(update, context)
     elif data.startswith("bs_"):
-        data_parts = data.split("_")
-        if len(data_parts) > 1 and data_parts[1] == "start":
-            await battleship_start(fake_update, context)
-        else:
-            await battleship_button_handler(update, context)
+        await battleship_button_handler(update, context)
+
 
 def main():
+
     if not TOKEN or TOKEN == "PASTE_YOUR_TOKEN_HERE":
-        print("خطأ: لم يتم العثور على التوكن.")
+        print("❌ خطأ: لم يتم العثور على التوكن. يرجى وضع التوكن في الكود أو في متغيرات البيئة.")
         return
 
     app = ApplicationBuilder().token(TOKEN).build()
@@ -353,11 +274,12 @@ def main():
     app.add_handler(CommandHandler("treasure", treasure_start))
     app.add_handler(CommandHandler("traps", traps_start))
     app.add_handler(CommandHandler("battleship", battleship_start))
-    app.add_handler(InlineQueryHandler(inline_query_handler))
+
     app.add_handler(CallbackQueryHandler(universal_callback_handler))
 
-    print("🤖 البوت الشامل يعمل الآن بكفاءة تامة...")
+    print("🚀 البوت الشامل يعمل الآن بكفاءة تامة وجاهز لاستقبال اللاعبين...")
     app.run_polling(drop_pending_updates=True)
+
 
 if __name__ == "__main__":
     main()
